@@ -1,83 +1,16 @@
-# strong_alias
+## strong_alias
 In C++, keywords `typedef` and `using`  are core language tools to [alias a type](https://en.cppreference.com/w/cpp/language/type_alias). It can help shorten the name or constrain templates. However, the introduced names are weak alias, they do not create a new type of that name. In short, assuming that `using A = int;` is introduced, functions `void foo(A){}` and `void foo(int){}` are identical to the compiler, and as such, not a valid overload set.
 
-Strong alias (aka strong typedef/opaque typedef/phantom type) introduces a new name to the compiler, while offering the full or partial set of features of the type that it should alias. They are main idea for libraries such as units libraries or the A basic implementation is straightforward, however it is generally too lax and/or too restrictive on some specific aspects.
+Strong alias (aka strong typedef/opaque typedef/phantom type) introduces a new name to the compiler, while offering the full or partial set of features of the type that it should alias. They are main idea for libraries such as units libraries. A basic implementation is straightforward, however it is generally too lax or too restrictive.
 
-```cpp
-namespace simple_v1
-{
-    template<typename T>
-    struct alias
-    {
-        using T::T;
-    };
+Many libraries ([NamedType](https://github.com/joboccara/NamedType), [type_safe](https://github.com/foonathan/type_safe), [strong_type](https://github.com/rollbear/strong_type),[strong_typedef](https://github.com/anthonywilliams/strong_typedef),[strong_type](https://github.com/doom/strong_type)) are available for crafting some strong types. They generally tend to encourage (force) the user to tune in details the properties of the new type with respect to the aliased type. As a result, they are quite cumbersome to use for simple aliasing. 
 
-    struct my_type : alias<Eigen::Vector3d>{ using alias::alias; };
-    struct my_other_type : alias<Eigen::Vector3d>{ using alias::alias; };
-
-	void foo(my_type) {
-	    foo(my_other_type{});// compiles, not cool
-    }
-}
-```
-
-```cpp
-namespace simple_v2 
-{
-    template<typename T>
-    struct alias : T
-    {
-        template<typename... Args> 
-        explicit alias(Args&&... args) : T(std::forward<Args>(args)...) {} 
-    };
-
-	struct my_type : alias<Eigen::Vector3d>{ using alias::alias; };
-
-    void foo() {
-        my_type result = my_type{} + my_type{};// does not compile
-    }
-}
-```
-
-Moreover, these snippets can only cover *class* kind of types since it is not possible to use inheritance with a fundamental type. A version for fundamental types can be made relatively easily too, but with the same caveats as for class-type version applies.
-
-```cpp
-namespace alias_for_fundamental_types  
-	template <typename T>
-    struct alias
-    {
-        alias() = default;
-        template<typename Arg> 
-        explicit alias(Arg&& arg) : value(std::forward<Arg>(arg)) {}   
-
-        // Implicitly convert to the underlying value
-        constexpr operator       T& ()      &  noexcept { return value; }
-        constexpr operator const T& () const&  noexcept { return value; }
-        constexpr operator       T&&()      && noexcept { return std::move(value); }
-    private:
-        T value;
-    };
-
-    struct my_type : alias<int>{ };
-    struct my_other_type : alias<int>{ };
-    auto foo(my_type) {
-        my_type result;
-        my_other_type other;
-        result = result+1;// No
-        result += other; // compiles, not cool
-        result++;//Yes
-    }
-}
-```
-
-Many libraries ([NamedType](https://github.com/joboccara/NamedType), [type_safe](https://github.com/foonathan/type_safe), [strong_type](https://github.com/rollbear/strong_type),[strong_typedef](https://github.com/anthonywilliams/strong_typedef),[strong_type](https://github.com/doom/strong_type)) are available online for doing it. They generally tend to encourage (force) the user to tune in details the properties of the new type with respect to the aliased type. As a result, they are quite cumbersome to use for simple aliasing. 
-
-The strong alias utility contained in this repository does not allow tuning, with simples predicates on the alias. It is a simple utility with fixed properties, which are:
+The strong alias utility contained in this repository does not allow tuning, with minimal predicates on the alias. It is a relatively simple utility with fixed properties, which are:
 
 * ❌ forbids
   * Direct initialization from another alias (`A a; B b = a;`)
-  * Any kind of assignment from another alias (`A a; B b += a;`)
-  * Passing a different alias as function argument without explicit cast (`void foo(B); f(A{}); `)
+  * Any kind of assignment from another alias (`A a; B b; b += a;`)
+  * Passing a different alias as function argument without explicit cast (`void f(B){}; f(A{});`)
   * Comparison to a different alias without explicit casting (`A a; B b; a == b;`) 
 * ✔️ allows
   * Explicit conversion from another alias (`A a; B b{a};`)
@@ -85,7 +18,7 @@ The strong alias utility contained in this repository does not allow tuning, wit
   * Everything else, the availability of any operation (and compilation error) are generated by the underlying type
 
 ## Example
-This is but an excerpt. The complete list is visible at the bottom of `strong_alias.h`
+This is but an excerpt. A more complete list is visible at the end of [`strong_alias.h`](./strong_alias.h)
 ```C++
 #include <strong_alias.h>
 #include <Eigen/Dense>
@@ -141,6 +74,69 @@ int main()
     { X a; [](Y&&){} (std::move(a)); }      // ❌
 
     return 0;
+}
+```
+## One-liner implementations and deficiencies
+
+```cpp
+// Basic v1: too lax
+template<typename T>
+struct alias : T
+{
+    using T::T;
+};
+// Problem
+#include <Eigen/Dense>
+struct my_type : alias<Eigen::Vector3d>{ using alias::alias; };
+struct my_other_type : alias<Eigen::Vector3d>{ using alias::alias; };
+void foo(my_type) {}
+
+int main() {
+    foo(my_other_type{});// compiles, not cool ☹️
+}
+```
+
+```cpp
+// Basic v2: too restrictive
+template<typename T>
+struct alias : T
+{
+    template<typename... Args> 
+    explicit alias(Args&&... args) : T(std::forward<Args>(args)...) {} 
+};
+// Problem
+#include <Eigen/Dense>
+struct my_type : alias<Eigen::Vector3d>{ using alias::alias; };
+
+int main() {
+    my_type result = my_type{} + my_type{};// does not compile, not cool ☹️
+}
+```
+
+These snippets above can only cover *class* kind of types since it is not possible to use inheritance with a [scalar type](https://en.cppreference.com/w/cpp/named_req/ScalarType). A version for such types can be made relatively easily too, but with the same caveats as for class-type version applies.
+
+```cpp
+// Basic for scalar types
+template <typename T>
+struct alias
+{
+    // Implicitly convert to the underlying value
+    constexpr operator       T& ()      &  noexcept { return value; }
+    constexpr operator const T& () const&  noexcept { return value; }
+    constexpr operator       T&&()      && noexcept { return std::move(value); }
+
+    T value = {};
+};
+// Problem
+struct my_type : alias<int>{};
+struct my_other_type : alias<int>{ };
+
+int main() {
+    my_type result{5};
+    my_other_type other;
+    result = result+1;// does not compile, missing operator=
+    result += other;  // compiles, not cool
+    other.value = 5;  // not private
 }
 ```
 
