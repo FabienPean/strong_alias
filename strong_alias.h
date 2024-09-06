@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 
 Copyright (c) 2020 Fabien Péan
@@ -35,30 +35,32 @@ struct NAME final : strong::alias<__VA_ARGS__,NAME> \
 
 namespace strong
 {
-    struct is_alias {};
+    struct is_alias_t {};
     template<typename Name>
-    struct alias_name {};
-
-    template <typename T, typename Name, typename = void>
+    struct alias_name : is_alias_t {};
+    template<typename T, typename Name>
     struct alias;
 
-    template <typename T, typename Name>
-    struct alias<T, Name, std::enable_if_t<std::is_scalar_v<T>>> : is_alias, alias_name<Name>
+    template<typename Arg>
+    concept is_alias = std::is_base_of_v<is_alias_t, std::decay_t<Arg>>;
+    template<typename Arg, typename Name>
+    concept is_same_alias = is_alias<Arg> && std::is_base_of_v<alias_name<Name>, std::decay_t<Arg>>;
+    template<typename Arg, typename Name>
+    concept is_different_alias = is_alias<Arg> && !std::is_base_of_v<alias_name<Name>, std::decay_t<Arg>>;
+
+    template <typename T, typename Name> requires std::is_scalar_v<T>
+    struct alias<T, Name> : alias_name<Name>
     {
     private:
-        template<typename Arg> static inline constexpr bool is_alias_v = std::is_base_of_v<is_alias, std::decay_t<Arg>>;
-        template<typename Arg> static inline constexpr bool is_different_alias_v =
-            is_alias_v<Arg> && !std::is_base_of_v<alias_name<Name>, std::decay_t<Arg>>;
-
         T value;
 
     public:
-        template<typename... Args, typename = std::enable_if_t<(is_alias_v<Args>&& ...)>>
-        explicit constexpr alias(Args&&... args) noexcept(((std::is_lvalue_reference_v<Args>&& ...) && std::is_nothrow_copy_constructible_v<T>) || ((std::is_rvalue_reference_v<Args> && ...) && std::is_nothrow_move_constructible_v<T>))
+        template<typename... Args> requires (is_alias<Args>&& ...)
+        explicit constexpr alias(Args&&... args) noexcept(((std::is_lvalue_reference_v<Args>&& ...) && std::is_nothrow_copy_constructible_v<T>) or ((std::is_rvalue_reference_v<Args> && ...) && std::is_nothrow_move_constructible_v<T>))
             : value{ std::forward<Args>(args)... } { static_assert(sizeof...(Args) <= 1); };
 
-        template<typename Arg, typename = std::enable_if_t<!is_alias_v<Arg>>>
-        constexpr alias(Arg&& arg)  noexcept((std::is_lvalue_reference_v<Arg>&& std::is_nothrow_copy_constructible_v<T>) || (std::is_rvalue_reference_v<Arg> && std::is_nothrow_move_constructible_v<T>))
+        template<typename Arg> requires(!is_alias<Arg>)
+        constexpr alias(Arg&& arg)  noexcept((std::is_lvalue_reference_v<Arg>&& std::is_nothrow_copy_constructible_v<T>) or (std::is_rvalue_reference_v<Arg> && std::is_nothrow_move_constructible_v<T>))
             : value{ std::forward<Arg>(arg) } {}
 
         // Implicit conversion
@@ -66,120 +68,113 @@ namespace strong
         constexpr operator T() const noexcept { return value; }
         // Increment/Decrement
         template<typename = std::void_t<decltype(++std::declval<T&>())>>
-        T& operator++() { return ++value; };
+        constexpr T& operator++() { return ++value; };
         template<typename = std::void_t<decltype(--std::declval<T&>())>>
-        T& operator--() { return --value; };
+        constexpr T& operator--() { return --value; };
         template<typename = std::void_t<decltype(std::declval<T&>()++)>>
-        T  operator++(int) { return value++; };
+        constexpr T  operator++(int) { return value++; };
         template<typename = std::void_t<decltype(std::declval<T&>()--)>>
-        T  operator--(int) { return value--; };
+        constexpr T  operator--(int) { return value--; };
         // Assignment operators
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator= (const Arg& arg)  { value   = arg; return *this; }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator+=(const Arg& arg)  { value  += arg; return *this; }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator-=(const Arg& arg)  { value  -= arg; return *this; }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator*=(const Arg& arg)  { value  *= arg; return *this; }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator/=(const Arg& arg)  { value  /= arg; return *this; }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator%=(const Arg& arg)  { value  %= arg; return *this; }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator&=(const Arg& arg)  { value  &= arg; return *this; }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator|=(const Arg& arg)  { value  |= arg; return *this; }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator^=(const Arg& arg)  { value  ^= arg; return *this; }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator<<=(const Arg& arg) { value <<= arg; return *this; }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator>>=(const Arg& arg) { value >>= arg; return *this; }
         // Comparison operators
-        template<typename Arg, typename = std::enable_if_t<is_different_alias_v<Arg>>>
-        bool operator ==(const Arg& arg) const = delete;
-        template<typename Arg, typename = std::enable_if_t<is_different_alias_v<Arg>>>
-        bool operator !=(const Arg& arg) const = delete;
-        template<typename Arg, typename = std::enable_if_t<is_different_alias_v<Arg>>>
-        bool operator >=(const Arg& arg) const = delete;
-        template<typename Arg, typename = std::enable_if_t<is_different_alias_v<Arg>>>
-        bool operator <=(const Arg& arg) const = delete;
-        template<typename Arg, typename = std::enable_if_t<is_different_alias_v<Arg>>>
-        bool operator > (const Arg& arg) const = delete;
-        template<typename Arg, typename = std::enable_if_t<is_different_alias_v<Arg>>>
-        bool operator < (const Arg& arg) const = delete;
+        template<typename Arg> requires is_different_alias<Arg,Name>
+        constexpr bool operator ==(const Arg& arg) const = delete;
+        template<typename Arg> requires is_different_alias<Arg,Name>
+        constexpr bool operator !=(const Arg& arg) const = delete;
+        template<typename Arg> requires is_different_alias<Arg,Name>
+        constexpr bool operator >=(const Arg& arg) const = delete;
+        template<typename Arg> requires is_different_alias<Arg,Name>
+        constexpr bool operator <=(const Arg& arg) const = delete;
+        template<typename Arg> requires is_different_alias<Arg,Name>
+        constexpr bool operator > (const Arg& arg) const = delete;
+        template<typename Arg> requires is_different_alias<Arg,Name>
+        constexpr bool operator < (const Arg& arg) const = delete;
         // Logical operators
-        template<typename Arg, typename = std::enable_if_t<is_different_alias_v<Arg>>>
-        bool operator &&(const Arg& arg) const = delete;
-        template<typename Arg, typename = std::enable_if_t<is_different_alias_v<Arg>>>
-        bool operator ||(const Arg& arg) const = delete;
+        template<typename Arg> requires is_different_alias<Arg,Name>
+        constexpr bool operator &&(const Arg& arg) const = delete;
+        template<typename Arg> requires is_different_alias<Arg,Name>
+        constexpr bool operator ||(const Arg& arg) const = delete;
         // Member access operators
-        template<typename U = T, typename = std::enable_if_t<std::is_pointer_v<U>&& std::is_class_v<std::remove_pointer_t<U>> > >
-        auto* operator->() { return value; };
-        template<typename U = T, typename = std::enable_if_t<std::is_pointer_v<U> > >
-        auto& operator*() { return *value; };
+        constexpr auto* operator->() requires std::is_pointer_v<T> && std::is_class_v<std::remove_pointer_t<T>> { return value; };
+        constexpr auto& operator*() requires std::is_pointer_v<T> { return *value; };
     };
 
     // Specialize for class types to use inheritance
-    template <typename T, typename Name>
-    struct alias<T, Name, typename std::enable_if_t<std::is_class_v<T>>> : is_alias, alias_name<Name>, T
+    template <typename T, typename Name> requires (std::is_class_v<T> && not std::is_final_v<T>)
+    struct alias<T, Name> : alias_name<Name>, T
     {
-    private:
-        template<typename Arg> static inline constexpr bool is_alias_v = std::is_base_of_v<is_alias, std::decay_t<Arg>>;
-        template<typename Arg> static inline constexpr bool is_different_alias_v =
-            is_alias_v<Arg> && !std::is_base_of_v<alias_name<Name>, std::decay_t<Arg>>;
-
     public:
         template<typename... Args>
-        explicit constexpr alias(Args&&... args)  noexcept(((std::is_lvalue_reference_v<Args>&& ...) && std::is_nothrow_copy_constructible_v<T>) || ((std::is_rvalue_reference_v<Args> && ...) && std::is_nothrow_move_constructible_v<T>))
+        explicit constexpr alias(Args&&... args)  noexcept(((std::is_lvalue_reference_v<Args>&& ...) && std::is_nothrow_copy_constructible_v<T>) or ((std::is_rvalue_reference_v<Args> && ...) && std::is_nothrow_move_constructible_v<T>))
             : T(std::forward<Args>(args)...) {}
 
-        template<typename Arg, typename = std::enable_if_t<!is_alias_v<Arg>>>
-        constexpr alias(Arg&& arg) noexcept((std::is_lvalue_reference_v<Arg>&& std::is_nothrow_copy_constructible_v<T>) || (std::is_rvalue_reference_v<Arg> && std::is_nothrow_move_constructible_v<T>))
+        template<typename Arg> requires (not is_alias<Arg>)
+        constexpr alias(Arg&& arg) noexcept((std::is_lvalue_reference_v<Arg>&& std::is_nothrow_copy_constructible_v<T>) or (std::is_rvalue_reference_v<Arg> && std::is_nothrow_move_constructible_v<T>))
             : T(std::forward<Arg>(arg)) {}
 
         // Assignment operators
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator=  (const Arg& arg) { return static_cast<alias&>(T::operator  =(arg)); }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator+= (const Arg& arg) { return static_cast<alias&>(T::operator +=(arg)); }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator-= (const Arg& arg) { return static_cast<alias&>(T::operator -=(arg)); }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator*= (const Arg& arg) { return static_cast<alias&>(T::operator *=(arg)); }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator/= (const Arg& arg) { return static_cast<alias&>(T::operator /=(arg)); }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator%= (const Arg& arg) { return static_cast<alias&>(T::operator %=(arg)); }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator&= (const Arg& arg) { return static_cast<alias&>(T::operator &=(arg)); }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator|= (const Arg& arg) { return static_cast<alias&>(T::operator |=(arg)); }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator^= (const Arg& arg) { return static_cast<alias&>(T::operator ^=(arg)); }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator<<=(const Arg& arg) { return static_cast<alias&>(T::operator<<=(arg)); }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator>>=(const Arg& arg) { return static_cast<alias&>(T::operator>>=(arg)); }
         // Comparison operators
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
-        bool operator ==(const Arg& arg) const { return T::operator==(arg); }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
-        bool operator !=(const Arg& arg) const { return T::operator!=(arg); }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
-        bool operator >=(const Arg& arg) const { return T::operator>=(arg); }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
-        bool operator <=(const Arg& arg) const { return T::operator<=(arg); }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
-        bool operator > (const Arg& arg) const { return T::operator>(arg); }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
-        bool operator < (const Arg& arg) const { return T::operator<(arg); }
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
+        constexpr bool operator ==(const Arg& arg) const { return T::operator==(arg); }
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
+        constexpr bool operator !=(const Arg& arg) const { return T::operator!=(arg); }
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
+        constexpr bool operator >=(const Arg& arg) const { return T::operator>=(arg); }
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
+        constexpr bool operator <=(const Arg& arg) const { return T::operator<=(arg); }
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
+        constexpr bool operator > (const Arg& arg) const { return T::operator>(arg); }
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
+        constexpr bool operator < (const Arg& arg) const { return T::operator<(arg); }
         // Logical operators
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
-        bool operator &&(const Arg& arg) const { return T::operator&&(arg); }
-        template<typename Arg, typename = std::enable_if_t<!is_different_alias_v<Arg>>>
-        bool operator ||(const Arg& arg) const { return T::operator||(arg); }
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
+        constexpr bool operator &&(const Arg& arg) const { return T::operator&&(arg); }
+        template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
+        constexpr bool operator ||(const Arg& arg) const { return T::operator||(arg); }
     };
 }
 
@@ -243,6 +238,8 @@ int main()
     /////////////////////////////////////////////
     { X a; X b{ 42.,3.14,2.4 }; }           // ✔️   
     { X a; X b{ a }; }                      // ✔️   
+    { X a; a[0]+=1; }                       // ✔️  
+    { X a; a(0)+=1; }                       // ✔️    
     { X a; X b; b = a; }                    // ✔️   
     { X a; X b; X a3 = a + b; }             // ✔️   
     { X a; X b; a += b; }                   // ✔️
