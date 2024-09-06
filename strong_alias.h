@@ -257,4 +257,7 @@ int main()
 
     return 0;
 }
+// g++ -w -std=c++20 -Ieigen -DSTRONG_ALIAS_TEST strong_alias.h -o strong_alias -fmax-errors=1000 > errors.log
+// grep -hr "✔️" errors.log 
+// grep -hr "❌" errors.log  | cut -d'|' -f1 | sort -u
 #endif
