@@ -1,4 +1,4 @@
-/*
+﻿/*
 The MIT License (MIT)
 
 Copyright (c) 2020,2024 Fabien Péan
@@ -113,21 +113,21 @@ namespace strong
         template<typename Arg> requires is_different_alias<Arg,Name>
         constexpr bool operator ||(const Arg& arg) const = delete;
         // Member access operators
-        constexpr auto* operator->() requires std::is_pointer_v<T> && std::is_class_v<std::remove_pointer_t<T>> { return value; };
-        constexpr auto& operator*() requires std::is_pointer_v<T> { return *value; };
+        constexpr auto* operator->() requires std::is_pointer_v<T> and std::is_class_v<std::remove_pointer_t<T>> { return value; };
+        constexpr auto& operator*()  requires std::is_pointer_v<T> { return *value; };
     };
 
     // Specialize for class types to use inheritance
-    template <typename T, typename Name> requires (std::is_class_v<T> && not std::is_final_v<T>)
+    template <typename T, typename Name> requires (std::is_class_v<T> and not std::is_final_v<T>)
     struct alias<T, Name> : alias_name<Name>, T
     {
     public:
         template<typename... Args>
-        explicit constexpr alias(Args&&... args)  noexcept(((std::is_lvalue_reference_v<Args>&& ...) && std::is_nothrow_copy_constructible_v<T>) or ((std::is_rvalue_reference_v<Args> && ...) && std::is_nothrow_move_constructible_v<T>))
+        explicit constexpr alias(Args&&... args)  noexcept(((std::is_lvalue_reference_v<Args> and ...) and std::is_nothrow_copy_constructible_v<T>) or ((std::is_rvalue_reference_v<Args> and ...) and std::is_nothrow_move_constructible_v<T>))
             : T(std::forward<Args>(args)...) {}
 
         template<typename Arg> requires (not is_alias<Arg>)
-        constexpr alias(Arg&& arg) noexcept((std::is_lvalue_reference_v<Arg>&& std::is_nothrow_copy_constructible_v<T>) or (std::is_rvalue_reference_v<Arg> && std::is_nothrow_move_constructible_v<T>))
+        constexpr alias(Arg&& arg) noexcept((std::is_lvalue_reference_v<Arg> and std::is_nothrow_copy_constructible_v<T>) or (std::is_rvalue_reference_v<Arg> and std::is_nothrow_move_constructible_v<T>))
             : T(std::forward<Arg>(arg)) {}
 
         // Increment/Decrement
