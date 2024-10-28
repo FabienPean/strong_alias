@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 
 Copyright (c) 2020,2024 Fabien Péan
@@ -67,14 +67,10 @@ namespace strong
         constexpr operator T() noexcept { return value; }
         constexpr operator T() const noexcept { return value; }
         // Increment/Decrement
-        template<typename = std::void_t<decltype(++std::declval<T&>())>>
-        constexpr T& operator++() { return ++value; };
-        template<typename = std::void_t<decltype(--std::declval<T&>())>>
-        constexpr T& operator--() { return --value; };
-        template<typename = std::void_t<decltype(std::declval<T&>()++)>>
-        constexpr T  operator++(int) { return value++; };
-        template<typename = std::void_t<decltype(std::declval<T&>()--)>>
-        constexpr T  operator--(int) { return value--; };
+        constexpr T& operator++()     requires requires(T& a) {++a;} { return ++value; };
+        constexpr T& operator--()     requires requires(T& a) {--a;} { return --value; };
+        constexpr T  operator++(int)  requires requires(T& a) {a++;} { return value++; };
+        constexpr T  operator--(int)  requires requires(T& a) {a--;} { return value--; };
         // Assignment operators
         template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator= (const Arg& arg)  { value   = arg; return *this; }
@@ -134,6 +130,11 @@ namespace strong
         constexpr alias(Arg&& arg) noexcept((std::is_lvalue_reference_v<Arg>&& std::is_nothrow_copy_constructible_v<T>) or (std::is_rvalue_reference_v<Arg> && std::is_nothrow_move_constructible_v<T>))
             : T(std::forward<Arg>(arg)) {}
 
+        // Increment/Decrement
+        constexpr alias& operator++()    requires requires(T& a) {++a;} { ++static_cast<T&>(*this); return *this; };
+        constexpr alias& operator--()    requires requires(T& a) {--a;} { --static_cast<T&>(*this); return *this; };
+        constexpr alias  operator++(int) requires requires(T& a) {a++;} { alias tmp{*this}; ++(*this); return tmp; };
+        constexpr alias  operator--(int) requires requires(T& a) {a--;} { alias tmp{*this}; --(*this); return tmp; };
         // Assignment operators
         template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator=  (const Arg& arg) { return static_cast<alias&>(T::operator  =(arg)); }
