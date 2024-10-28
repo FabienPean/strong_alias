@@ -217,23 +217,25 @@ int main()
 
     /// Pointer fundamental type alias
     /////////////////////////////////////////////
-    { D c; *c = 1; }                        // ✔️
-    { D c; c.operator->(); }                // ❌
-    { D c; c[0]; }                          // ✔️
-    { D c; c += 1; c -= 1; }                // ✔️
-    { D c; c++; c--; }                      // ✔️
-    { D c; c == nullptr; c != nullptr; }    // ✔️
-    { D c; c > 0; }                         // ❌
-    { D c; c *= 1; c /= 1; }                // ❌
+    int dd = 0;
+    { D c{&dd}; *c = 1; }                        // ✔️
+    { D c{&dd}; c.operator->(); }                // ❌
+    { D c{&dd}; c[0]; }                          // ✔️
+    { D c{&dd}; c += 1; c -= 1; }                // ✔️
+    { D c{&dd}; c++; c--; }                      // ✔️
+    { D c{&dd}; c == nullptr; c != nullptr; }    // ✔️
+    { D c{&dd}; c > 0; }                         // ❌
+    { D c{&dd}; c *= 1; c /= 1; }                // ❌
 
     /// Pointer class type alias
     /////////////////////////////////////////////
-    { C c; (*c).size(); }                   // ✔️
-    { C c; c->size(); }                     // ✔️
-    { C c; c[0].size(); }                   // ✔️
-    { C c; c += 1; c -= 1; }                // ✔️
-    { C c; c++; c--; }                      // ✔️
-    { C c; c *= 1; c /= 1; }                // ❌
+    std::vector<double> cc;
+    { C c{&cc}; (*c).size(); }                   // ✔️
+    { C c{&cc}; c->size(); }                     // ✔️
+    { C c{&cc}; c[0].size(); }                   // ✔️
+    { C c{&cc}; c += 1; c -= 1; }                // ✔️
+    { C c{&cc}; c++; c--; }                      // ✔️
+    { C c{&cc}; c *= 1; c /= 1; }                // ❌
 
     ///// Class type alias
     /////////////////////////////////////////////
