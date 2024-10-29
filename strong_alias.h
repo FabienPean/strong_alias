@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 
 Copyright (c) 2020,2024 Fabien Péan
@@ -181,20 +181,16 @@ namespace strong
 
 
 #ifdef STRONG_ALIAS_TEST
-#include <Eigen/Dense>
 #include <cstdint>
-ALIAS(X, Eigen::Matrix<double, 3, 1>);
-ALIAS(Y, Eigen::Vector3d);
-ALIAS(A, int);
-ALIAS(B, std::int32_t);
-#include<vector>
-ALIAS(C, std::vector<double>*);
-ALIAS(D, int*);
+#include <vector>
+#include <Eigen/Dense>
 
 int main()
 {
     /// Fundamental type alias
     /////////////////////////////////////////////
+    ALIAS(A, int);
+    ALIAS(B, std::int32_t);
     { A a; A b{ std::int8_t{42} }; }        // ✔️
     { A a; A b{ a }; }                      // ✔️
     { A a; A  b = a; }                      // ✔️
@@ -217,6 +213,7 @@ int main()
 
     /// Pointer fundamental type alias
     /////////////////////////////////////////////
+    ALIAS(D, int*);
     int dd = 0;
     { D c{&dd}; *c = 1; }                        // ✔️
     { D c{&dd}; c.operator->(); }                // ❌
@@ -229,6 +226,7 @@ int main()
 
     /// Pointer class type alias
     /////////////////////////////////////////////
+    ALIAS(C, std::vector<double>*);
     std::vector<double> cc;
     { C c{&cc}; (*c).size(); }                   // ✔️
     { C c{&cc}; c->size(); }                     // ✔️
@@ -239,6 +237,8 @@ int main()
 
     ///// Class type alias
     /////////////////////////////////////////////
+    ALIAS(X, Eigen::Matrix<double, 3, 1>);
+    ALIAS(Y, Eigen::Vector3d);
     { X a; X b{ 42.,3.14,2.4 }; }           // ✔️   
     { X a; X b{ a }; }                      // ✔️   
     { X a; a[0]+=1; }                       // ✔️  
