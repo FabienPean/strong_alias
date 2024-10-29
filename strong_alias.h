@@ -1,4 +1,4 @@
-/*
+﻿/*
 The MIT License (MIT)
 
 Copyright (c) 2020,2024 Fabien Péan
@@ -35,6 +35,9 @@ struct NAME final : strong::alias<__VA_ARGS__,NAME> \
 
 namespace strong
 {
+    template<typename T>
+    using rm_cvref_t = std::remove_cvref_t<T>;
+
     struct is_alias_t {};
     template<typename Name>
     struct alias_name : is_alias_t {};
@@ -42,11 +45,11 @@ namespace strong
     struct alias;
 
     template<typename Arg>
-    concept is_alias = std::is_base_of_v<is_alias_t, std::decay_t<Arg>>;
+    concept is_alias = std::is_base_of_v<is_alias_t, rm_cvref_t<Arg>>;
     template<typename Arg, typename Name>
-    concept is_same_alias = is_alias<Arg> && std::is_base_of_v<alias_name<Name>, std::decay_t<Arg>>;
+    concept is_same_alias = is_alias<Arg> && std::is_base_of_v<alias_name<Name>, rm_cvref_t<Arg>>;
     template<typename Arg, typename Name>
-    concept is_different_alias = is_alias<Arg> && !std::is_base_of_v<alias_name<Name>, std::decay_t<Arg>>;
+    concept is_different_alias = is_alias<Arg> && !std::is_base_of_v<alias_name<Name>, rm_cvref_t<Arg>>;
 
     template <typename T, typename Name> requires std::is_scalar_v<T>
     struct alias<T, Name> : alias_name<Name>
@@ -126,7 +129,7 @@ namespace strong
         explicit constexpr alias(Args&&... args)  noexcept(((std::is_lvalue_reference_v<Args> and ...) and std::is_nothrow_copy_constructible_v<T>) or ((std::is_rvalue_reference_v<Args> and ...) and std::is_nothrow_move_constructible_v<T>))
             : T(std::forward<Args>(args)...) {}
 
-        template<typename Arg> requires (not is_alias<Arg>)
+        template<typename Arg> requires (not is_alias<rm_cvref_t<Arg>> or is_same_alias<rm_cvref_t<Arg>,Name>)
         constexpr alias(Arg&& arg) noexcept((std::is_lvalue_reference_v<Arg> and std::is_nothrow_copy_constructible_v<T>) or (std::is_rvalue_reference_v<Arg> and std::is_nothrow_move_constructible_v<T>))
             : T(std::forward<Arg>(arg)) {}
 
