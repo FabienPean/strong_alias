@@ -1,4 +1,4 @@
-﻿/*
+/*
 The MIT License (MIT)
 
 Copyright (c) 2020,2024 Fabien Péan
@@ -67,13 +67,13 @@ namespace strong
             : value{ std::forward<Arg>(arg) } {}
 
         // Implicit conversion
-        constexpr operator T() noexcept { return value; }
+        constexpr operator T()       noexcept { return value; }
         constexpr operator T() const noexcept { return value; }
         // Increment/Decrement
-        constexpr T& operator++()     requires requires(T& a) {++a;} { return ++value; };
-        constexpr T& operator--()     requires requires(T& a) {--a;} { return --value; };
-        constexpr T  operator++(int)  requires requires(T& a) {a++;} { return value++; };
-        constexpr T  operator--(int)  requires requires(T& a) {a--;} { return value--; };
+        constexpr alias& operator++()     requires requires(T& a) {++a;} { ++value; return *this; };
+        constexpr alias& operator--()     requires requires(T& a) {--a;} { --value; return *this; };
+        constexpr alias  operator++(int)  requires requires(T& a) {a++;} { return alias{value++}; };
+        constexpr alias  operator--(int)  requires requires(T& a) {a--;} { return alias{value--}; };
         // Assignment operators
         template<typename Arg> requires(not is_alias<Arg> or is_same_alias<Arg,Name>)
         constexpr alias& operator= (const Arg& arg)  { value   = arg; return *this; }
