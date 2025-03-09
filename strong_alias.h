@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright (c) 2020,2024 Fabien Péan
+Copyright (c) 2020-2025 Fabien Péan
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,8 @@ SOFTWARE.
 #include <type_traits>
 
 // Macro for conveniently defining a new alias
-#define ALIAS(NAME, ...) \
+// The second argument is passed in variadic macro and should be a typename
+#define STRONG_ALIAS(NAME, ...) \
 struct NAME final : strong::alias<__VA_ARGS__,NAME> \
 {\
 	using strong::alias<__VA_ARGS__,NAME>::alias;\
@@ -192,8 +193,8 @@ int main()
 {
     /// Fundamental type alias
     /////////////////////////////////////////////
-    ALIAS(A, int);
-    ALIAS(B, std::int32_t);
+    STRONG_ALIAS(A, int);
+    STRONG_ALIAS(B, std::int32_t);
     { A a; A b{ std::int8_t{42} }; }        // ✔️
     { A a; A b{ a }; }                      // ✔️
     { A a; A  b = a; }                      // ✔️
@@ -216,7 +217,7 @@ int main()
 
     /// Pointer fundamental type alias
     /////////////////////////////////////////////
-    ALIAS(D, int*);
+    STRONG_ALIAS(D, int*);
     int dd = 0;
     { D c{&dd}; *c = 1; }                        // ✔️
     { D c{&dd}; c.operator->(); }                // ❌
@@ -229,7 +230,7 @@ int main()
 
     /// Pointer class type alias
     /////////////////////////////////////////////
-    ALIAS(C, std::vector<double>*);
+    STRONG_ALIAS(C, std::vector<double>*);
     std::vector<double> cc;
     { C c{&cc}; (*c).size(); }                   // ✔️
     { C c{&cc}; c->size(); }                     // ✔️
@@ -240,8 +241,8 @@ int main()
 
     ///// Class type alias
     /////////////////////////////////////////////
-    ALIAS(X, Eigen::Matrix<double, 3, 1>);
-    ALIAS(Y, Eigen::Vector3d);
+    STRONG_ALIAS(X, Eigen::Matrix<double, 3, 1>);
+    STRONG_ALIAS(Y, Eigen::Vector3d);
     { X a; X b{ 42.,3.14,2.4 }; }           // ✔️   
     { X a; X b{ a }; }                      // ✔️   
     { X a; a[0]+=1; }                       // ✔️  
